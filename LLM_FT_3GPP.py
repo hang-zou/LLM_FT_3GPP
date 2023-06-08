@@ -30,9 +30,9 @@ import wandb
 wandb.login(key="089114d20a5448f90191fd2db8212aecafdea332")
 
 data_files = {
-    'train': '/efs/hang/telecombrain/globecom23/Dataset/5G_200FT_200TEST_80PER/3GPP_train.json',
-    'validation': '/efs/hang/telecombrain/globecom23/Dataset/5G_200FT_200TEST_80PER/3GPP_validation.json',
-    'test': '/efs/hang/telecombrain/globecom23/Dataset/5G_200FT_200TEST_80PER/3GPP_test.json'
+    'train': '/efs/Users/Hang/Telecombrain/Dataset/5G_200FT_200TEST_100PER/3GPP_train.json',
+    'validation': '/efs/Users/Hang/Telecombrain/Dataset/5G_200FT_200TEST_100PER/3GPP_validation.json',
+    'test': '/efs/Users/Hang/Telecombrain/Dataset/5G_200FT_200TEST_100PER/3GPP_test.json'
 }
 dataset = load_dataset("json", data_files=data_files)
 
@@ -85,12 +85,12 @@ model = AutoModelForSequenceClassification.from_pretrained("bert-base-uncased",
 ##--------------------------------------------------
 # ## Train the model!
 # set up batch size
-batch_size = 32
+batch_size = 64
 # set up performance metric
 metric_name = "f1"
 
 args = TrainingArguments(
-    f"bert-finetuned-3gpp/5G_200FT_200TEST_80PER_r4",
+    f"bert-finetuned-3gpp/5G_200FT_200TEST_100PER",
     evaluation_strategy = "epoch",
     save_strategy = "epoch",
     learning_rate=2e-5,

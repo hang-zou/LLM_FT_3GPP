@@ -49,17 +49,21 @@ labels
 
 ##--------------------------------------------------
 # ## Preprocess data
-# 
-tokenizer = AutoTokenizer.from_pretrained("bert-base-uncased")
+model_name = "tiiuae/falcon-7b"
+tokenizer = AutoTokenizer.from_pretrained(model_name,trust_remote_code=True)
 #tokenizer = AutoTokenizer.from_pretrained("distilbert-base-uncased")
 #tokenizer = AutoTokenizer.from_pretrained("albert-base-v2")
 #tokenizer = AutoTokenizer.from_pretrained("roberta-base")
+
+# For falcon, since it's GPT-like.
+tokenizer.pad_token = tokenizer.eos_token
 
 def preprocess_data(examples):
   # take a batch of texts
   text = examples["text"]
   # encode them
-  encoding = tokenizer(text, padding="max_length", truncation=True, max_length=128)
+  #encoding = tokenizer(text, padding="max_length", truncation=True, max_length=128)
+  encoding = tokenizer(text, padding="longest", truncation=True, max_length=128)
   # add labels
   labels_batch = {k: examples[k] for k in examples.keys() if k in labels}
   # create numpy array of shape (batch_size, num_labels)
@@ -76,12 +80,15 @@ encoded_dataset = dataset.map(preprocess_data, batched=True, remove_columns=data
 
 ##--------------------------------------------------
 # ## Define model
-model = AutoModelForSequenceClassification.from_pretrained("bert-base-uncased", 
+model = AutoModelForSequenceClassification.from_pretrained(model_name, 
+                                                           trust_remote_code=True,
+                                                           device_map="auto",
                                                            problem_type="multi_label_classification", 
                                                            num_labels=len(labels),
                                                            id2label=id2label,
                                                            label2id=label2id)
-
+# For falcon since it's GPT-like
+model.config.pad_token_id = model.config.eos_token_id
 ##--------------------------------------------------
 # ## Train the model!
 # set up batch size
@@ -90,13 +97,13 @@ batch_size = 64
 metric_name = "f1"
 
 args = TrainingArguments(
-    f"bert-finetuned-3gpp/5G_200FT_200TEST_100PER",
+    f"/efs/Users/Hang/Telecombrain/Checkpoints/falcon-7b-finetuned-3gpp/5G_200FT_200TEST_100PER",
     evaluation_strategy = "epoch",
     save_strategy = "epoch",
     learning_rate=2e-5,
     per_device_train_batch_size=batch_size,
     per_device_eval_batch_size=batch_size,
-    num_train_epochs=3, # if portion is greater than 50%, set to 3
+    num_train_epochs=5, # if portion is greater than 50%, set to 3
     weight_decay=0.01,
     load_best_model_at_end=True,
     metric_for_best_model=metric_name,
@@ -136,6 +143,8 @@ def compute_metrics(p: EvalPrediction):
     return result
 
 
+device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
+model.to(device)
 
 # Let's start training!
 trainer = Trainer(
@@ -161,11 +170,26 @@ trainer.train()
 final_results = trainer.evaluate(encoded_dataset["test"])
 
 # Compare the results
-print("\n\nPerformance of BERT before fine-tuning on 3GPP files:")
+print("\n\nPerformance of Falcon-7B before fine-tuning on 3GPP files:")
 print(initial_results)
 
-print("\nPerformance of BERT after fine-tuning on 3GPP files:")
+print("\nPerformance of Falcon-7B after fine-tuning on 3GPP files:")
 print(final_results)
 
+# Specify the directory path and filename
+path = "/efs/Users/Hang/Telecombrain/Results/"
+filename = "falcon_7B_5G_200FT_200TEST_100PER.txt"
+
+# Create a new text file
+with open(f'{path}{filename}', 'w') as f:
+    # You can write an initial string to the file if you want
+    f.write('Results of pre-trained LLM Falcon-7B for datatset 5G_200FT_200TEST_100PER :\n')
+
+# Open the text file in append mode
+with open(f'{path}{filename}', 'a') as f:
+    f.write(f"LLM before fine-tuning :\n")
+    f.write(str(initial_results) + "\n\n")
+    f.write(f"LLM after fine-tuning :\n")
+    f.write(str(final_results) + "\n\n")
 
 

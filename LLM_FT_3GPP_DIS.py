@@ -143,7 +143,11 @@ def compute_metrics(p: EvalPrediction):
     return result
 
 
-device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
+if torch.cuda.device_count() > 1:
+    print("Let's use", torch.cuda.device_count(), "GPUs!")
+    model = torch.nn.DataParallel(model)
+
+device = torch.device('cuda:0') 
 model.to(device)
 
 # Let's start training!
@@ -156,12 +160,7 @@ trainer = Trainer(
     compute_metrics=compute_metrics
 )
 
-if torch.cuda.device_count() > 1:
-    print("Let's use", torch.cuda.device_count(), "GPUs!")
-    model = torch.nn.DataParallel(model)
 
-device = torch.device('cuda:0') 
-model.to(device)
 
 
 # BERT without fine-tuning
